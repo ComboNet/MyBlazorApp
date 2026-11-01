@@ -1,0 +1,42 @@
+﻿name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ] # หรือเปลี่ยนเป็น master ตามชื่อ branch หลักของคุณ
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x' # ระบุเวอร์ชัน .NET ที่คุณใช้งาน (เช่น 8.0.x หรือ 9.0.x)
+
+      - name: Publish Project
+        run: dotnet publish -c Release -o release
+
+      # ป้องกัน Error 404 เมื่อผู้ใช้กด Refresh หน้าอื่นที่ไม่ใช่หน้าแรกบน GitHub Pages
+      - name: Copy index.html to 404.html
+        run: cp release/wwwroot/index.html release/wwwroot/404.html
+
+      - name: Upload Artifacts
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: release/wwwroot
+
+  deploy-pages:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,109 @@
+﻿@page "/"
+@using MyBlazorApp.Models
+@inject Supabase.Client SupabaseClient
+
+<PageTitle>เพิ่มข้อมูลสินค้า</PageTitle>
+
+<div class="container mt-5" style="max-width: 500px;">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">บันทึกข้อมูลสินค้า</h4>
+        </div>
+        <div class="card-body">
+            <!-- ฟอร์มกรอกข้อมูล -->
+            <EditForm Model="@productModel" OnValidSubmit="ShowConfirmDialog">
+                <DataAnnotationsValidator />
+                <div class="mb-3">
+                    <label class="form-label">รหัสสินค้า (Code)</label>
+                    <InputText @bind-Value="productModel.Code" class="form-control" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">ชื่อสินค้า (Name)</label>
+                    <InputText @bind-Value="productModel.Name" class="form-control" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">ราคาสินค้า (Price)</label>
+                    <InputNumber @bind-Value="productModel.Price" class="form-control" required min="0" />
+                </div>
+                <button type="submit" class="btn btn-success w-100">Save</button>
+            </EditForm>
+            @if (!string.IsNullOrEmpty(statusMessage))
+            {
+                <div class="alert alert-info mt-3 py-2 text-center">@statusMessage</div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- 📦 Pop-up Dialog ยืนยันการบันทึกข้อมูล -->
+@if (isDialogVisible)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">ยืนยันการบันทึกข้อมูล</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDialog"></button>
+                </div>
+                <div class="modal-body">
+                    <p>คุณต้องการบันทึกข้อมูลสินค้าชิ้นนี้ลงในระบบใช่หรือไม่?</p>
+                    <ul>
+                        <li><strong>รหัส:</strong> @productModel.Code</li>
+                        <li><strong>ชื่อ:</strong> @productModel.Name</li>
+                        <li><strong>ราคา:</strong> @productModel.Price.ToString("N2") บาท</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDialog">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveDataToSupabase" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span>กำลังบันทึก...</span>
+                        }
+                        else
+                        {
+                            <span>ยืนยันการบันทึก</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private Product productModel = new Product();
+    private bool isDialogVisible = false;
+    private bool isSaving = false;
+    private string statusMessage = "";
+    private void ShowConfirmDialog()
+    {
+        isDialogVisible = true;
+    }
+    private void CloseDialog()
+    {
+        isDialogVisible = false;
+    }
+    private async Task SaveDataToSupabase()
+    {
+        isSaving = true;
+        statusMessage = "กำลังส่งข้อมูลไปยังฐานข้อมูล...";
+        try
+        {
+            // 🚀 คำสั่งบันทึกข้อมูลเข้า Supabase
+            await SupabaseClient.From<Product>().Insert(productModel);
+            statusMessage = "🎉 บันทึกข้อมูลสำเร็จเรียบร้อยแล้ว!";
+            // เคลียร์ฟอร์มหลังจากบันทึกสำเร็จ
+            productModel = new Product();
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ เกิดข้อผิดพลาด: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+            isDialogVisible = false;
+        }
+    }
+}
